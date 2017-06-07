@@ -1,0 +1,5 @@
+target
+/.settings
+/shared/.settings
+/dctmclient/.settings
+.classpath

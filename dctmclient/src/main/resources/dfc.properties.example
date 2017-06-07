@@ -1,0 +1,6 @@
+dfc.name=ToolyIt_DctmClient
+dfc.user.dir=D\:/Documentum
+dfc.data.dir=D\:/Documentum/data_toolyit
+dfc.tokenstorage.dir=D\:/Documentum/apptoken
+dfc.security.keystore.file=${dfc.data.user_dir}/dfc.keystore
+dfc.session.secure_connect_default=try_native_first
