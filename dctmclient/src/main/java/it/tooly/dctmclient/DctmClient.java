@@ -62,7 +62,7 @@ public class DctmClient {
 	private Map<String, ContentServer> hostsContentServers;
 
 	/**
-	 * Known content servers per repository with the repository as key
+	 * Known content servers per repository with the repository name as key
 	 */
 	private Map<String, List<ContentServer>> reposContentServers;
 
@@ -94,6 +94,7 @@ public class DctmClient {
 	private void init() {
 		this.clientx = new DfClientX();
 		this.hostsContentServers = new HashMap<>();
+		this.reposContentServers = new HashMap<>();
 		this.repoMap = new ModelMap<>();
 		this.contentServerMap = new ModelMap<>();
 		this.serverSessMans = new HashMap<>();
@@ -360,10 +361,17 @@ public class DctmClient {
 	 * @param account
 	 *            An IUserAccount object
 	 * @return An IDfSession interface, if a session exists or can be created
+	 * @throws DfException
 	 * @throws DfServiceException
 	 */
-	public synchronized IDfSession getSession(IRepository repository, IUserAccount account) throws DfServiceException {
-		List<ContentServer> servers = this.reposContentServers.get(repository.getName());
+	public synchronized IDfSession getSession(IRepository repository, IUserAccount account) throws DfException {
+		List<ContentServer> servers;
+		if (this.reposContentServers == null || this.reposContentServers.isEmpty()) {
+			ModelMap<ContentServer> serverMap = loadContentServerMap(repository);
+			servers = new ArrayList<>(serverMap.values());
+		} else {
+			servers = this.reposContentServers.get(repository.getName());
+		}
 		if (servers == null || servers.isEmpty())
 			return null;
 		IDfSessionManager sesMan = getSessionManager(servers.get(0), account);
@@ -372,6 +380,48 @@ public class DctmClient {
 		IDfSession session = sesMan.getSession(servers.get(0).getConnectionString());
 		this.serverSessions.put(servers.get(0), session);
 		return session;
+	}
+
+	/**
+	 * Release all current sessions for a repository
+	 *
+	 * @param repository
+	 *            The repository for which to release the server sessions
+	 * @param alsoDisconnect
+	 *            {@code true} to also do a session disconnect
+	 * @return The number sessions that have been released
+	 */
+	public synchronized int releaseSessions(IRepository repository, boolean alsoDisconnect) {
+		List<ContentServer> servers = this.reposContentServers.get(repository.getName());
+		Set<IContentServer> disconnectedServers = new HashSet<>();
+
+		int nrReleasedSessions = 0;
+		try {
+			for (ContentServer server : servers) {
+				IDfSession session = this.serverSessions.get(server);
+				if (session == null) {
+					logger.info("No session for server " + server);
+					continue;
+				}
+				try {
+					session.getSessionManager().release(session);
+				} catch (DfRuntimeException re) {
+					logger.warn("Could not release session", re);
+				}
+				nrReleasedSessions++;
+				if (alsoDisconnect && session.isConnected()) {
+					session.disconnect();
+					disconnectedServers.add(server);
+				}
+			}
+		} catch (DfException e) {
+			logger.error("Error disconnecting session", e);
+		} finally {
+			for (IContentServer server : disconnectedServers) {
+				this.serverSessions.remove(server);
+			}
+		}
+		return nrReleasedSessions;
 	}
 
 	/**
@@ -391,7 +441,7 @@ public class DctmClient {
 				try {
 					session.getSessionManager().release(session);
 				} catch (DfRuntimeException re) {
-					logger.info("Could not release session", re);
+					logger.warn("Could not release session", re);
 				}
 				nrReleasedSessions++;
 				if (alsoDisconnect && session.isConnected()) {
