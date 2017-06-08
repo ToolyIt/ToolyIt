@@ -1,7 +1,7 @@
 /**
  * 
  */
-package it.tooly.dctmclient.model;
+package it.tooly.shared.model;
 
 /**
  * A basic interface for an object that is selectable

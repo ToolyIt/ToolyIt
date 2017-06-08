@@ -8,11 +8,13 @@ import com.documentum.fc.common.DfValue;
 import com.documentum.fc.common.IDfAttr;
 import com.documentum.fc.common.IDfValue;
 
-public class DctmObject extends AbstractObject implements IDctmObject {
+import it.tooly.shared.model.AbstractModelObject;
+
+public class DctmObject extends AbstractModelObject implements IDctmObject {
 	private static final Logger LOGGER = Logger.getLogger(DctmObject.class);
 	protected IRepository repository;
 	protected IDfTypedObject typedObject;
-	
+
 	protected DctmObject(String id) {
 		super(id);
 		this.repository = null;
@@ -22,10 +24,33 @@ public class DctmObject extends AbstractObject implements IDctmObject {
 		super(id, name);
 		this.repository = repo;
 	}
-	
+
 	protected DctmObject(IRepository repo, String id, IDfTypedObject typedObject) throws DfException {
 		super(id, typedObject.getValueAt(0).asString());
 		this.repository = repo;
+	}
+
+	private void addAttrsFromTypedObject(IDfTypedObject typedObject) throws DfException {
+		for (int x = 0; x < typedObject.getAttrCount(); x++) {
+			IDfAttr attr = typedObject.getAttr(x);
+			IDfValue val = typedObject.getValueAt(x);
+			int dataType = val.getDataType();
+			switch (dataType) {
+			case IDfValue.DF_BOOLEAN:
+				addAttribute(attr.getName(), Boolean.class, val.asBoolean());
+			case IDfValue.DF_INTEGER:
+				addAttribute(attr.getName(), Boolean.class, val.asBoolean());
+			case IDfValue.DF_ID:
+
+			case IDfValue.DF_TIME:
+
+			case IDfValue.DF_DOUBLE:
+			case IDfValue.DF_STRING:
+			default:
+
+			}
+
+		}
 	}
 
 	public IRepository getRepository() {
@@ -49,7 +74,7 @@ public class DctmObject extends AbstractObject implements IDctmObject {
 	public void setTypedObject(IDfTypedObject typedObject) {
 		this.typedObject = typedObject;
 	}
-	
+
 	public IDfValue getAttrValue(int index) {
 		IDfValue value;
 		try {

@@ -1,4 +1,4 @@
-package it.tooly.shared.util;
+package it.tooly.shared.common;
 
 /*
  Copyright (c) 2009, Mark Renouf

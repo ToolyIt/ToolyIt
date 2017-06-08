@@ -40,8 +40,8 @@ import com.documentum.fc.common.IDfLoginInfo;
 import com.documentum.fc.common.IDfTime;
 import com.documentum.fc.common.IDfValue;
 
-import it.tooly.shared.util.FileUtils;
-import it.tooly.shared.util.StringUtils;
+import it.tooly.shared.common.FileUtils;
+import it.tooly.shared.common.StringUtils;
 
 /**
  * The Class DctmUtils.

@@ -2,13 +2,15 @@ package it.tooly.dctmclient.model;
 
 import com.documentum.fc.common.DfException;
 
-public class Repository extends AbstractObject implements IModelObject, IRepository {
-	
-	private String description;
-	
+import it.tooly.shared.model.AbstractModelObject;
+import it.tooly.shared.model.IModelObject;
+
+public class Repository extends AbstractModelObject implements IModelObject, IRepository {
+
 	/**
-	 * Repository constructor. This also loads the content server map for this repository.
-	 * 
+	 * Repository constructor. This also loads the content server map for this
+	 * repository.
+	 *
 	 * @param id
 	 *            docbase ID
 	 * @param name
@@ -19,14 +21,14 @@ public class Repository extends AbstractObject implements IModelObject, IReposit
 	 */
 	public Repository(String id, String name, String description) throws DfException {
 		super(id, name);
-		this.description = description;
+		addStringAttribute("description", description);
 	}
 
 	public String getDescription() {
-		return this.description;
+		return (String) getAttrValue("description");
 	}
 
 	public void setDescription(String description) {
-		this.description = description;
+		setAttrValue("description", description);
 	}
 }

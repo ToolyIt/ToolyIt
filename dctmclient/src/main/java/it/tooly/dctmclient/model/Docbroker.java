@@ -3,7 +3,7 @@
  */
 package it.tooly.dctmclient.model;
 
-import it.tooly.dctmclient.model.util.ModelMap;
+import it.tooly.shared.model.util.ModelMap;
 
 /**
  * A Documentum docbroker

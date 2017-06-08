@@ -8,20 +8,93 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package it.tooly.dctmclient.model;
+package it.tooly.shared.model;
 
-public abstract class AbstractObject {
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * An object with an id and a name. Subclasses can safely implement
+ * {@link IModelObject}
+ */
+public abstract class AbstractModelObject {
 	protected String id;
-	protected String name;
+	protected Map<String, Class<? extends Object>> attributes;
+	protected Map<String, Object> attributeValues;
 
-	public AbstractObject(String id) {
-		this.id = id;
-		this.name = "";
+	public AbstractModelObject(String id) {
+		this.init(id, "");
 	}
 
-	public AbstractObject(String id, String name) {
+	public AbstractModelObject(String id, String name) {
+		this.init(id, name);
+	}
+
+	private void init(String id, String name) {
 		this.id = id;
-		this.name = name;
+		/*
+		 * Create attributes and attributeValues maps. They are both
+		 * LinkedHashMap because they should be in the same order.
+		 */
+		this.attributes = new LinkedHashMap<>();
+		this.attributeValues = new LinkedHashMap<>();
+		/*
+		 * By default this object has a name attribute
+		 */
+		addStringAttribute("name", name);
+	}
+
+	/**
+	 * Add a certain type of attribute (with some matching type of value) to
+	 * this object.
+	 *
+	 * @param aName
+	 *            - Name of the attribute.
+	 * @param aClass
+	 *            - A Class (T) that specifies the value type of the attribute.
+	 * @param aValue
+	 *            - The value of the attribute. Should be of the correct type
+	 *            (T).
+	 */
+	protected <T extends Object> void addAttribute(String aName, Class<T> aClass, T aValue) {
+		this.attributes.put(aName, aClass);
+		this.attributeValues.put(aName, aValue);
+	}
+
+	/**
+	 * Add a certain type of attribute (with some matching type of value) to
+	 * this object.
+	 *
+	 * @param aName
+	 *            - Name of the attribute.
+	 * @param aValue
+	 *            - The (String) value of the attribute.
+	 */
+	protected <T extends Object> void addStringAttribute(String aName, String aValue) {
+		this.attributes.put(aName, String.class);
+		this.attributeValues.put(aName, aValue);
+	}
+
+	public Set<String> getAttrNames() {
+		return this.attributes.keySet();
+	}
+
+	public Class<? extends Object> getAttrClass(String attrName) {
+		return this.attributes.get(attrName);
+	}
+
+	public Object getAttrValue(String attrName) {
+		return this.attributeValues.get(attrName);
+	}
+
+	public void setAttrValue(String attrName, Object attrValue) {
+		if (hasAttr(attrName))
+			this.attributeValues.put(attrName, attrValue);
+	}
+
+	public boolean hasAttr(String attrName) {
+		return this.attributes.containsKey(attrName);
 	}
 
 	/**
@@ -47,7 +120,7 @@ public abstract class AbstractObject {
 	 * @return the name
 	 */
 	public String getName() {
-		return this.name;
+		return (String) this.attributeValues.get("name");
 	}
 
 	/**
@@ -55,7 +128,7 @@ public abstract class AbstractObject {
 	 *            the name to set
 	 */
 	public void setName(String name) {
-		this.name = name;
+		this.attributeValues.put("name", name);
 	}
 
 	public int compareTo(IModelObject o) {
@@ -67,7 +140,7 @@ public abstract class AbstractObject {
 	 */
 	@Override
 	public String toString() {
-		return this.name + " (" + id + ")";
+		return this.getName() + " (" + id + ")";
 	}
 
 }

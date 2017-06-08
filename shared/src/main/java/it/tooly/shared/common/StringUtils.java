@@ -1,4 +1,4 @@
-package it.tooly.shared.util;
+package it.tooly.shared.common;
 
 import java.util.ArrayList;
 import java.util.HashMap;

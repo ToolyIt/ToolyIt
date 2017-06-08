@@ -40,7 +40,7 @@ import it.tooly.dctmclient.model.IContentServer;
 import it.tooly.dctmclient.model.IRepository;
 import it.tooly.dctmclient.model.IUserAccount;
 import it.tooly.dctmclient.model.Repository;
-import it.tooly.dctmclient.model.util.ModelMap;
+import it.tooly.shared.model.util.ModelMap;
 
 
 /**
