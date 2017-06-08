@@ -1,5 +1,7 @@
 package it.tooly.dctmclient.model;
 
+import java.util.Date;
+
 import org.apache.log4j.Logger;
 
 import com.documentum.fc.client.IDfTypedObject;
@@ -28,6 +30,7 @@ public class DctmObject extends AbstractModelObject implements IDctmObject {
 	protected DctmObject(IRepository repo, String id, IDfTypedObject typedObject) throws DfException {
 		super(id, typedObject.getValueAt(0).asString());
 		this.repository = repo;
+		addAttrsFromTypedObject(typedObject);
 	}
 
 	private void addAttrsFromTypedObject(IDfTypedObject typedObject) throws DfException {
@@ -39,15 +42,17 @@ public class DctmObject extends AbstractModelObject implements IDctmObject {
 			case IDfValue.DF_BOOLEAN:
 				addAttribute(attr.getName(), Boolean.class, val.asBoolean());
 			case IDfValue.DF_INTEGER:
-				addAttribute(attr.getName(), Boolean.class, val.asBoolean());
+				addAttribute(attr.getName(), Integer.class, val.asInteger());
 			case IDfValue.DF_ID:
-
+				addAttribute(attr.getName(), String.class, val.asId().toString());
 			case IDfValue.DF_TIME:
-
+				addAttribute(attr.getName(), Date.class, val.asTime().getDate());
 			case IDfValue.DF_DOUBLE:
+				addAttribute(attr.getName(), Double.class, val.asDouble());
 			case IDfValue.DF_STRING:
-			default:
 
+			default:
+				addAttribute(attr.getName(), String.class, val.asString());
 			}
 
 		}
