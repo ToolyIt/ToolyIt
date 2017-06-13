@@ -21,6 +21,7 @@ import com.documentum.com.IDfClientX;
 import com.documentum.fc.client.DfServiceException;
 import com.documentum.fc.client.IDfClient;
 import com.documentum.fc.client.IDfDocbaseMap;
+import com.documentum.fc.client.IDfDocbrokerClient;
 import com.documentum.fc.client.IDfQuery;
 import com.documentum.fc.client.IDfServerMap;
 import com.documentum.fc.client.IDfSession;
@@ -55,6 +56,7 @@ public class DctmClient {
 	private final Logger logger;
 	private IDfClientX clientx = null;
 	private IDfClient client = null;
+	private IDfDocbrokerClient docbrokerClient = null;
 
 	/**
 	 * Known content servers with the hostname as key
@@ -62,12 +64,12 @@ public class DctmClient {
 	private Map<String, ContentServer> hostsContentServers;
 
 	/**
-	 * Known content servers per repository with the repository name as key
+	 * Known content servers per repository with the repository as key
 	 */
-	private Map<String, List<ContentServer>> reposContentServers;
+	private Map<IRepository, List<ContentServer>> reposContentServers;
 
 	/**
-	 * Known repositories with the (short) repository name as key
+	 * Known repositories with the repository id as key
 	 */
 	private ModelMap<Repository> repoMap;
 
@@ -114,7 +116,8 @@ public class DctmClient {
 	 */
 	private synchronized void initDFC() throws DfException {
 		if (this.client == null) {
-			this.client = clientx.getLocalClient();
+			this.client = this.clientx.getLocalClient();
+			this.docbrokerClient = this.clientx.getDocbrokerClient();
 		}
 	}
 
@@ -154,7 +157,7 @@ public class DctmClient {
 	public ModelMap<Docbroker> getDocbrokerMap() throws DfException {
 		initDFC();
 		ModelMap<Docbroker> docbrokerMap = new ModelMap<>();
-		DocbrokerMap dfDocbrokerMap = (DocbrokerMap) this.client.getDocbrokerMap();
+		DocbrokerMap dfDocbrokerMap = (DocbrokerMap) this.docbrokerClient.getDocbrokerMap();
 		logger.debug("DOCBROKERS");
 		for (int x = 0; x < dfDocbrokerMap.getDocbrokerCount(); x++) {
 			String attrName = dfDocbrokerMap.getAttr(x).getName();
@@ -182,13 +185,13 @@ public class DctmClient {
 	public ModelMap<Repository> loadRepositoryMap() throws DfException {
 		logger.debug("Loading repository map");
 		initDFC();
-		IDfDocbaseMap dbm = this.client.getDocbaseMap();
+		IDfDocbaseMap dbm = this.docbrokerClient.getDocbaseMap();
 		for (int rx = 0; rx < dbm.getDocbaseCount(); rx++) {
 			logger.debug(" - " + dbm.getDocbaseName(rx) + " (" + dbm.getDocbaseDescription(rx) + ")");
 			Repository repo;
 			repo = new Repository(dbm.getDocbaseId(rx), dbm.getDocbaseName(rx),
 					dbm.getDocbaseDescription(rx));
-			this.repoMap.put(dbm.getDocbaseName(rx), repo);
+			this.repoMap.put(repo);
 		}
 		logger.debug("Found " + this.repoMap.size() + " repositories");
 		return this.repoMap;
@@ -202,7 +205,7 @@ public class DctmClient {
 	}
 
 	/**
-	 * @return The map of known content servers
+	 * @return The map of known (cached) content servers
 	 */
 	public ModelMap<ContentServer> getContentServerMap() {
 		return this.contentServerMap;
@@ -210,31 +213,35 @@ public class DctmClient {
 
 	/**
 	 * Get all content servers for the known repositories. This won't return
-	 * anything if there are no kown repositories.
+	 * anything if there are no known repositories.
 	 *
 	 * @return A {@link Collection} of {@link ContentServer} objects.
 	 * @throws DfException
 	 * @throws ExecutionException
 	 * @throws InterruptedException
 	 */
-	public Collection<ContentServer> loadAllContentServers() throws DfException, InterruptedException, ExecutionException {
+	public ModelMap<ContentServer> loadAllContentServers()
+			throws DfException, InterruptedException, ExecutionException {
 		initDFC();
-		Collection<ContentServer> servers = new ArrayList<>();
 		Collection<Repository> repoList = getRepositoryMap().values();
 		for (Repository repo : repoList) {
 			ModelMap<ContentServer> csMap = loadContentServerMap(repo);
-			servers.addAll(csMap.values());
+			this.contentServerMap.putAll(csMap);
 		}
-		return servers;
+		return this.contentServerMap;
 	}
 
 	/**
-	 * Load all content servers, cache and return them
+	 * Load content servers for a specific repository, cache and return them.
+	 * The stored map of all content servers will be cleared first.
+	 *
+	 * @param repository
+	 *            - An {@link IRepository}
 	 * @return A {@link ModelMap} with {@link ContentServer} as values
 	 */
 	public ModelMap<ContentServer> loadContentServerMap(IRepository repository) throws DfException {
 		initDFC();
-		IDfServerMap dfServerMap = (IDfServerMap) this.client.getServerMap(repository.getName());
+		IDfServerMap dfServerMap = (IDfServerMap) this.docbrokerClient.getServerMap(repository.getName());
 		if (this.contentServerMap != null) {
 			// Clear servers from known serverlist first
 			for (Entry<String, ContentServer> csEntry : this.contentServerMap.entrySet()) {
@@ -252,7 +259,7 @@ public class DctmClient {
 			this.contentServerMap.put(server);
 			this.hostsContentServers.put(server.getHostname(), server);
 		}
-		this.reposContentServers.put(repository.getName(), servers);
+		this.reposContentServers.put(repository, servers);
 		return this.contentServerMap;
 	}
 
@@ -370,7 +377,7 @@ public class DctmClient {
 			ModelMap<ContentServer> serverMap = loadContentServerMap(repository);
 			servers = new ArrayList<>(serverMap.values());
 		} else {
-			servers = this.reposContentServers.get(repository.getName());
+			servers = this.reposContentServers.get(repository);
 		}
 		if (servers == null || servers.isEmpty())
 			return null;
