@@ -18,7 +18,7 @@ import java.util.Set;
  * An object with an id and a name. Subclasses can safely implement
  * {@link IModelObject}
  */
-public abstract class AbstractModelObject {
+public abstract class AbstractModelObject implements IModelObject {
 	protected String id;
 	protected Map<String, Class<? extends Object>> attributes;
 	protected Map<String, Object> attributeValues;

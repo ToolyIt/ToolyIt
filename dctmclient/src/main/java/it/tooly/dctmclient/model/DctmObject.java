@@ -1,18 +1,23 @@
 package it.tooly.dctmclient.model;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Date;
 
 import org.apache.log4j.Logger;
 
+import com.documentum.fc.client.IDfSysObject;
 import com.documentum.fc.client.IDfTypedObject;
 import com.documentum.fc.common.DfException;
 import com.documentum.fc.common.DfValue;
 import com.documentum.fc.common.IDfAttr;
 import com.documentum.fc.common.IDfValue;
 
-import it.tooly.shared.model.AbstractModelObject;
+import it.tooly.shared.common.ToolyException;
+import it.tooly.shared.model.AbstractModelContentObject;
 
-public class DctmObject extends AbstractModelObject implements IDctmObject {
+public class DctmObject extends AbstractModelContentObject implements IDctmObject {
 	private static final Logger LOGGER = Logger.getLogger(DctmObject.class);
 	protected IRepository repository;
 	protected IDfTypedObject typedObject;
@@ -67,6 +72,19 @@ public class DctmObject extends AbstractModelObject implements IDctmObject {
 	}
 
 	/**
+	 * Return the internal Documentum object as a sysobject.
+	 *
+	 * @return The object, but only if this is a IDfSysObject, otherwise returns
+	 *         null
+	 */
+	public IDfSysObject getSysObject() {
+		if (typedObject instanceof IDfSysObject)
+			return (IDfSysObject) typedObject;
+		else
+			return null;
+	}
+
+	/**
 	 * @return The typedObject
 	 */
 	public IDfTypedObject getTypedObject() {
@@ -106,6 +124,62 @@ public class DctmObject extends AbstractModelObject implements IDctmObject {
 	@Override
 	public String getAttrStringValue(int index) {
 		return getAttrValue(index).asString();
+	}
+
+	/*
+	 * (non-Javadoc)
+	 *
+	 * @see it.tooly.shared.model.AbstractModelContentObject#hasContent()
+	 */
+	@Override
+	public boolean hasContent() {
+		if (typedObject != null && typedObject instanceof IDfSysObject) {
+			try {
+				return ((IDfSysObject) typedObject).getContentSize() > 0;
+			} catch (DfException e) {
+				LOGGER.warn("Error getting content size of object", e);
+			}
+		}
+		return super.hasContent();
+	}
+
+	/*
+	 * (non-Javadoc)
+	 *
+	 * @see it.tooly.shared.model.AbstractModelContentObject#getContent()
+	 */
+	@Override
+	public InputStream getContent() throws ToolyException {
+		if (typedObject != null && typedObject instanceof IDfSysObject) {
+			try {
+				return ((IDfSysObject) typedObject).getContent();
+			} catch (DfException e) {
+				throw new ToolyException("Could not get object content", e);
+			}
+		}
+		return super.getContent();
+	}
+
+	/*
+	 * (non-Javadoc)
+	 *
+	 * @see it.tooly.shared.model.AbstractModelContentObject#setContent(byte[])
+	 */
+	@Override
+	public void setContent(byte[] content) throws ToolyException {
+		if (typedObject != null && typedObject instanceof IDfSysObject) {
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			try {
+				bos.write(content);
+			} catch (IOException ioe) {
+				throw new ToolyException(ioe);
+			}
+			try {
+				((IDfSysObject) typedObject).setContent(bos);
+			} catch (DfException e) {
+				throw new ToolyException("Could not get object content", e);
+			}
+		}
 	}
 
 }

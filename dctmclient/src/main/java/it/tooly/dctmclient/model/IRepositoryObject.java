@@ -1,8 +1,8 @@
 package it.tooly.dctmclient.model;
 
-import it.tooly.shared.model.IModelObject;
+import it.tooly.shared.model.IModelContentObject;
 
-public interface IRepositoryObject extends IModelObject {
+public interface IRepositoryObject extends IModelContentObject {
 
 	public IRepository getRepository();
 
