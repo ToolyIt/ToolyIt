@@ -14,6 +14,7 @@ import com.documentum.fc.common.DfValue;
 import com.documentum.fc.common.IDfAttr;
 import com.documentum.fc.common.IDfValue;
 
+import it.tooly.dctmclient.DctmClient;
 import it.tooly.shared.common.ToolyException;
 import it.tooly.shared.model.AbstractModelContentObject;
 
@@ -22,18 +23,37 @@ public class DctmObject extends AbstractModelContentObject implements IDctmObjec
 	protected IRepository repository;
 	protected IDfTypedObject typedObject;
 
-	protected DctmObject(String id) {
+	public DctmObject(String id) {
 		super(id);
 		this.repository = null;
 	}
 
-	protected DctmObject(IRepository repo, String id, String name) {
+	public DctmObject(IRepository repo, String id, String name) {
 		super(id, name);
 		this.repository = repo;
 	}
 
-	protected DctmObject(IRepository repo, String id, IDfTypedObject typedObject) throws DfException {
-		super(id, typedObject.getValueAt(0).asString());
+	public DctmObject(IDfTypedObject typedObject) throws DfException {
+		super(typedObject.getObjectId().getId());
+		if (typedObject.getObjectId().isNull()) {
+			if (typedObject.hasAttr("r_object_id")) {
+				this.id = typedObject.getString("r_object_id");
+			} else if (typedObject.hasAttr("id")) {
+				this.id = typedObject.getString("id");
+			}
+		}
+		addAttrsFromTypedObject(typedObject);
+		if (typedObject.hasAttr("object_name")) {
+			this.setName(typedObject.getString("object_name"));
+		} else if (typedObject.hasAttr("name")) {
+			this.setName(typedObject.getString("name"));
+		}
+		long docbaseId = typedObject.getObjectId().getNumericDocbaseId();
+		this.repository = DctmClient.getInstance().getRepositoryMap().get(docbaseId);
+	}
+
+	public DctmObject(IRepository repo, String id, IDfTypedObject typedObject) throws DfException {
+		super(id != null ? id : typedObject.getObjectId().getId(), typedObject.getValueAt(0).asString());
 		this.repository = repo;
 		addAttrsFromTypedObject(typedObject);
 	}
@@ -46,14 +66,19 @@ public class DctmObject extends AbstractModelContentObject implements IDctmObjec
 			switch (dataType) {
 			case IDfValue.DF_BOOLEAN:
 				addAttribute(attr.getName(), Boolean.class, val.asBoolean());
+				break;
 			case IDfValue.DF_INTEGER:
 				addAttribute(attr.getName(), Integer.class, val.asInteger());
+				break;
 			case IDfValue.DF_ID:
 				addAttribute(attr.getName(), String.class, val.asId().toString());
+				break;
 			case IDfValue.DF_TIME:
 				addAttribute(attr.getName(), Date.class, val.asTime().getDate());
+				break;
 			case IDfValue.DF_DOUBLE:
 				addAttribute(attr.getName(), Double.class, val.asDouble());
+				break;
 			case IDfValue.DF_STRING:
 
 			default:

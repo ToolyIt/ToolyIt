@@ -2,6 +2,8 @@ package it.tooly.shared.model.util;
 
 import java.util.LinkedHashMap;
 
+import org.apache.commons.lang.StringUtils;
+
 import it.tooly.shared.model.IModelObject;
 
 /**
@@ -25,11 +27,13 @@ public class ModelMap<T extends IModelObject> extends LinkedHashMap<String, T> i
 	 * IModelObject)
 	 */
 	public T put(T object) {
-		return this.put(object.getId(), object);
+		if (StringUtils.isBlank(object.getId()))
+			throw new IllegalArgumentException("Object key is blank");
+		return super.put(object.getId(), object);
 	}
 
 	@Override
 	public T get(String id) {
-		return get(id);
+		return super.get(id);
 	}
 }

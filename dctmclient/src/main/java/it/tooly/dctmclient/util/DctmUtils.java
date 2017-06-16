@@ -40,6 +40,9 @@ import com.documentum.fc.common.IDfLoginInfo;
 import com.documentum.fc.common.IDfTime;
 import com.documentum.fc.common.IDfValue;
 
+import it.tooly.dctmclient.DctmClient;
+import it.tooly.dctmclient.model.DctmObject;
+import it.tooly.dctmclient.model.IRepository;
 import it.tooly.shared.common.FileUtils;
 import it.tooly.shared.common.StringUtils;
 
@@ -1348,6 +1351,12 @@ public class DctmUtils {
 		}
 
 		return result;
+	}
+
+	public static DctmObject getObject(IDfTypedObject typedObject) throws NumberFormatException, DfException {
+		String docbaseId = typedObject.getObjectId().getDocbaseId();
+		IRepository repo = DctmClient.getInstance().getRepositoryMap().get(docbaseId);
+		return new DctmObject(repo, typedObject.getObjectId().getId(), typedObject);
 	}
 
 	public static IDfPersistentObject getObjectByAttr(IDfSession session, String dctmObjectType, String attrName, String attrValue) throws DfException {

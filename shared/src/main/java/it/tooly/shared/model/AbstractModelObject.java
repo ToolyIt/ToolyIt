@@ -11,6 +11,7 @@
 package it.tooly.shared.model;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,6 +30,15 @@ public abstract class AbstractModelObject implements IModelObject {
 
 	public AbstractModelObject(String id, String name) {
 		this.init(id, name);
+	}
+
+	public AbstractModelObject(String id, String name, List<String> strAttrs) {
+		this.init(id, name);
+		if (strAttrs != null && strAttrs.size() > 0) {
+			for (String attrName : strAttrs) {
+				addStringAttribute(attrName, "");
+			}
+		}
 	}
 
 	private void init(String id, String name) {
@@ -80,12 +90,28 @@ public abstract class AbstractModelObject implements IModelObject {
 		return this.attributes.keySet();
 	}
 
+	public String getAttrName(int index) {
+		Set<String> attrNames = getAttrNames();
+		if (attrNames != null && !attrNames.isEmpty() && attrNames.size() > index) {
+			String[] attrNamesArray = new String[attrNames.size()];
+			attrNames.toArray(attrNamesArray);
+			return attrNamesArray[index];
+		} else {
+			return null;
+		}
+	}
+
 	public Class<? extends Object> getAttrClass(String attrName) {
 		return this.attributes.get(attrName);
 	}
 
 	public Object getAttrValue(String attrName) {
 		return this.attributeValues.get(attrName);
+	}
+
+	public Object getAttrValueAt(int index) {
+		String attrName = getAttrName(index);
+		return attrName == null ? null : this.attributeValues.get(attrName);
 	}
 
 	public void setAttrValue(String attrName, Object attrValue) {
