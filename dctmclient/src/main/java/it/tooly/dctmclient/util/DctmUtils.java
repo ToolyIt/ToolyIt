@@ -1354,9 +1354,21 @@ public class DctmUtils {
 	}
 
 	public static DctmObject getObject(IDfTypedObject typedObject) throws NumberFormatException, DfException {
+		return getObject(typedObject, false);
+	}
+
+	public static DctmObject getObject(IDfTypedObject typedObject, boolean fetchFromDctm)
+			throws NumberFormatException, DfException {
 		String docbaseId = typedObject.getObjectId().getDocbaseId();
 		IRepository repo = DctmClient.getInstance().getRepositoryMap().get(docbaseId);
-		return new DctmObject(repo, typedObject.getObjectId().getId(), typedObject);
+		IDfTypedObject typedDctmObject;
+		if (fetchFromDctm) {
+			IDfSession session = typedObject.getObjectSession();
+			typedDctmObject = session.getObject(typedObject.getObjectId());
+		} else {
+			typedDctmObject = typedObject;
+		}
+		return new DctmObject(repo, typedObject.getObjectId().getId(), typedDctmObject);
 	}
 
 	public static IDfPersistentObject getObjectByAttr(IDfSession session, String dctmObjectType, String attrName, String attrValue) throws DfException {
