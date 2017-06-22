@@ -3,7 +3,6 @@ package it.tooly.dctmclient.model;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Date;
 
 import org.apache.log4j.Logger;
 
@@ -65,24 +64,24 @@ public class DctmObject extends AbstractModelContentObject implements IDctmObjec
 			int dataType = val.getDataType();
 			switch (dataType) {
 			case IDfValue.DF_BOOLEAN:
-				addAttribute(attr.getName(), Boolean.class, val.asBoolean());
+				addAttribute(attr.getName(), AttrType.BOOLEAN, val.asBoolean());
 				break;
 			case IDfValue.DF_INTEGER:
-				addAttribute(attr.getName(), Integer.class, val.asInteger());
+				addAttribute(attr.getName(), AttrType.INTEGER, val.asInteger());
 				break;
 			case IDfValue.DF_ID:
-				addAttribute(attr.getName(), String.class, val.asId().toString());
+				addAttribute(attr.getName(), AttrType.STRING, val.asId().toString());
 				break;
 			case IDfValue.DF_TIME:
-				addAttribute(attr.getName(), Date.class, val.asTime().getDate());
+				addAttribute(attr.getName(), AttrType.DATE, val.asTime().getDate());
 				break;
 			case IDfValue.DF_DOUBLE:
-				addAttribute(attr.getName(), Double.class, val.asDouble());
+				addAttribute(attr.getName(), AttrType.DOUBLE, val.asDouble());
 				break;
 			case IDfValue.DF_STRING:
 
 			default:
-				addAttribute(attr.getName(), String.class, val.asString());
+				addAttribute(attr.getName(), AttrType.STRING, val.asString());
 			}
 
 		}

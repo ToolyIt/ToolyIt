@@ -4,8 +4,11 @@
 package it.tooly.shared.model.util;
 
 import java.util.ArrayList;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import it.tooly.shared.model.IModelObject;
+import it.tooly.shared.model.IModelObject.AttrType;
 
 /**
  * Extends the {@link ArrayList} but is strict in which objects are allowed to
@@ -32,6 +35,14 @@ public class StrictModelList<T extends IModelObject> extends ArrayList<T> implem
 
 	public boolean attributesHashMatches(T object) {
 		return (object.getAttrNames().hashCode() == this.attrsHash);
+	}
+
+	public Set<Entry<String, AttrType>> getFirstObjectAttrs() {
+		if (!this.isEmpty()) {
+			return this.get(0).getAttrs();
+		} else {
+			return null;
+		}
 	}
 
 }

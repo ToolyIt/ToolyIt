@@ -13,6 +13,7 @@ package it.tooly.shared.model;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 /**
@@ -21,11 +22,12 @@ import java.util.Set;
  */
 public abstract class AbstractModelObject implements IModelObject {
 	protected String id;
-	protected Map<String, Class<? extends Object>> attributes;
+	protected Map<String, AttrType> attributes;
 	protected Map<String, Object> attributeValues;
 
 	public AbstractModelObject(String id) {
 		this.init(id, "");
+
 	}
 
 	public AbstractModelObject(String id, String name) {
@@ -67,8 +69,8 @@ public abstract class AbstractModelObject implements IModelObject {
 	 *            - The value of the attribute. Should be of the correct type
 	 *            (T).
 	 */
-	protected <T extends Object> void addAttribute(String aName, Class<T> aClass, T aValue) {
-		this.attributes.put(aName, aClass);
+	protected void addAttribute(String aName, AttrType aType, Object aValue) {
+		this.attributes.put(aName, aType);
 		this.attributeValues.put(aName, aValue);
 	}
 
@@ -82,8 +84,12 @@ public abstract class AbstractModelObject implements IModelObject {
 	 *            - The (String) value of the attribute.
 	 */
 	protected <T extends Object> void addStringAttribute(String aName, String aValue) {
-		this.attributes.put(aName, String.class);
+		this.attributes.put(aName, AttrType.STRING);
 		this.attributeValues.put(aName, aValue);
+	}
+
+	public Set<Entry<String, AttrType>> getAttrs() {
+		return this.attributes.entrySet();
 	}
 
 	public Set<String> getAttrNames() {
@@ -101,7 +107,7 @@ public abstract class AbstractModelObject implements IModelObject {
 		}
 	}
 
-	public Class<? extends Object> getAttrClass(String attrName) {
+	public AttrType getAttrType(String attrName) {
 		return this.attributes.get(attrName);
 	}
 
