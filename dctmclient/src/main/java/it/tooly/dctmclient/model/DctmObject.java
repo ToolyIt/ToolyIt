@@ -16,6 +16,7 @@ import com.documentum.fc.common.IDfValue;
 import it.tooly.dctmclient.DctmClient;
 import it.tooly.shared.common.ToolyException;
 import it.tooly.shared.model.AbstractModelContentObject;
+import it.tooly.shared.model.ModelObjectAttribute.AttrType;
 
 public class DctmObject extends AbstractModelContentObject implements IDctmObject {
 	private static final Logger LOGGER = Logger.getLogger(DctmObject.class);
@@ -32,7 +33,7 @@ public class DctmObject extends AbstractModelContentObject implements IDctmObjec
 		this.repository = repo;
 	}
 
-	public DctmObject(IDfTypedObject typedObject) throws DfException {
+	public DctmObject(IDfTypedObject typedObject) throws DfException, ToolyException {
 		super(typedObject.getObjectId().getId());
 		if (typedObject.getObjectId().isNull()) {
 			if (typedObject.hasAttr("r_object_id")) {
@@ -51,13 +52,13 @@ public class DctmObject extends AbstractModelContentObject implements IDctmObjec
 		this.repository = DctmClient.getInstance().getRepositoryMap().get(docbaseId);
 	}
 
-	public DctmObject(IRepository repo, String id, IDfTypedObject typedObject) throws DfException {
+	public DctmObject(IRepository repo, String id, IDfTypedObject typedObject) throws DfException, ToolyException {
 		super(id != null ? id : typedObject.getObjectId().getId(), typedObject.getValueAt(0).asString());
 		this.repository = repo;
 		addAttrsFromTypedObject(typedObject);
 	}
 
-	private void addAttrsFromTypedObject(IDfTypedObject typedObject) throws DfException {
+	private void addAttrsFromTypedObject(IDfTypedObject typedObject) throws DfException, ToolyException {
 		for (int x = 0; x < typedObject.getAttrCount(); x++) {
 			IDfAttr attr = typedObject.getAttr(x);
 			IDfValue val = typedObject.getValueAt(x);

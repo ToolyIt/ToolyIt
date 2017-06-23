@@ -45,6 +45,7 @@ import it.tooly.dctmclient.model.DctmObject;
 import it.tooly.dctmclient.model.IRepository;
 import it.tooly.shared.common.FileUtils;
 import it.tooly.shared.common.StringUtils;
+import it.tooly.shared.common.ToolyException;
 
 /**
  * The Class DctmUtils.
@@ -1353,12 +1354,13 @@ public class DctmUtils {
 		return result;
 	}
 
-	public static DctmObject getObject(IDfTypedObject typedObject) throws NumberFormatException, DfException {
+	public static DctmObject getObject(IDfTypedObject typedObject)
+			throws NumberFormatException, DfException, ToolyException {
 		return getObject(typedObject, false);
 	}
 
 	public static DctmObject getObject(IDfTypedObject typedObject, boolean fetchFromDctm)
-			throws NumberFormatException, DfException {
+			throws NumberFormatException, DfException, ToolyException {
 		String docbaseId = typedObject.getObjectId().getDocbaseId();
 		IRepository repo = DctmClient.getInstance().getRepositoryMap().get(docbaseId);
 		IDfTypedObject typedDctmObject;

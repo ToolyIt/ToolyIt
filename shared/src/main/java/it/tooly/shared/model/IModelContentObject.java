@@ -36,4 +36,12 @@ public interface IModelContentObject extends IModelObject {
 	 * @throws ToolyException
 	 */
 	public void setContent(byte[] content) throws ToolyException;
+
+	public boolean lock();
+
+	public boolean unlock();
+
+	public String getLockOwner();
+
+	public String getContentType() throws ToolyException;
 }

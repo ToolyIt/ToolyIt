@@ -3,7 +3,11 @@
  */
 package it.tooly.shared.model.util;
 
+import java.util.Iterator;
+import java.util.Set;
+
 import it.tooly.shared.model.IModelObject;
+import it.tooly.shared.model.ModelObjectAttribute;
 
 /**
  * Extends the {@link ModelMap} but is strict in which objects are allowed to
@@ -16,7 +20,7 @@ import it.tooly.shared.model.IModelObject;
  * @author M.E. de Boer
  *
  */
-public class StrictModelMap<T extends IModelObject> extends ModelMap<T> {
+public class StrictModelMap<T extends IModelObject> extends ModelMap<T> implements IStrictModelMap<T> {
 
 	private static final long serialVersionUID = 8891592978180703001L;
 	private int attrsHash = -1;
@@ -30,6 +34,16 @@ public class StrictModelMap<T extends IModelObject> extends ModelMap<T> {
 
 	public boolean attributesHashMatches(T object) {
 		return (object.getAttrNames().hashCode() == this.attrsHash);
+	}
+
+	public Set<ModelObjectAttribute<?>> getFirstObjectAttrs() {
+		if (!this.isEmpty()) {
+			Iterator<String> keysIt = this.keySet().iterator();
+			T object = this.get(keysIt.next());
+			return object.getAttrs();
+		} else {
+			return null;
+		}
 	}
 
 }

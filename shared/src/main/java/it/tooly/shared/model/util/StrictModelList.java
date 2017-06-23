@@ -4,11 +4,10 @@
 package it.tooly.shared.model.util;
 
 import java.util.ArrayList;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import it.tooly.shared.model.IModelObject;
-import it.tooly.shared.model.IModelObject.AttrType;
+import it.tooly.shared.model.ModelObjectAttribute;
 
 /**
  * Extends the {@link ArrayList} but is strict in which objects are allowed to
@@ -21,7 +20,8 @@ import it.tooly.shared.model.IModelObject.AttrType;
  * @author M.E. de Boer
  *
  */
-public class StrictModelList<T extends IModelObject> extends ArrayList<T> implements IModelList<T> {
+public class StrictModelList<T extends IModelObject> extends ArrayList<T>
+		implements IModelList<T>, IStrictModelList<T> {
 
 	private static final long serialVersionUID = -8053195669557158204L;
 	private int attrsHash = -1;
@@ -37,7 +37,7 @@ public class StrictModelList<T extends IModelObject> extends ArrayList<T> implem
 		return (object.getAttrNames().hashCode() == this.attrsHash);
 	}
 
-	public Set<Entry<String, AttrType>> getFirstObjectAttrs() {
+	public Set<ModelObjectAttribute<?>> getFirstObjectAttrs() {
 		if (!this.isEmpty()) {
 			return this.get(0).getAttrs();
 		} else {

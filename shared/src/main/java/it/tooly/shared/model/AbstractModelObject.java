@@ -11,10 +11,13 @@
 package it.tooly.shared.model;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
+
+import it.tooly.shared.common.ToolyException;
+import it.tooly.shared.model.ModelObjectAttribute.AttrType;
 
 /**
  * An object with an id and a name. Subclasses can safely implement
@@ -22,12 +25,11 @@ import java.util.Set;
  */
 public abstract class AbstractModelObject implements IModelObject {
 	protected String id;
-	protected Map<String, AttrType> attributes;
-	protected Map<String, Object> attributeValues;
+	protected Map<String, ModelObjectAttribute<? extends Object>> attributes;
+	// protected Map<String, Object> attributeValues;
 
 	public AbstractModelObject(String id) {
 		this.init(id, "");
-
 	}
 
 	public AbstractModelObject(String id, String name) {
@@ -50,7 +52,7 @@ public abstract class AbstractModelObject implements IModelObject {
 		 * LinkedHashMap because they should be in the same order.
 		 */
 		this.attributes = new LinkedHashMap<>();
-		this.attributeValues = new LinkedHashMap<>();
+		// this.attributeValues = new LinkedHashMap<>();
 		/*
 		 * By default this object has a name attribute
 		 */
@@ -61,17 +63,28 @@ public abstract class AbstractModelObject implements IModelObject {
 	 * Add a certain type of attribute (with some matching type of value) to
 	 * this object.
 	 *
+	 * @param attribute
+	 *            - A ModelObjectAttribute
+	 */
+	protected void addAttribute(ModelObjectAttribute<?> attribute) {
+		this.attributes.put(attribute.getName(), attribute);
+	}
+
+	/**
+	 * Add a certain type of attribute (with some matching type of value) to
+	 * this object.
+	 *
 	 * @param aName
 	 *            - Name of the attribute.
-	 * @param aClass
-	 *            - A Class (T) that specifies the value type of the attribute.
+	 * @param aType
+	 *            - The type of the attribute.
 	 * @param aValue
 	 *            - The value of the attribute. Should be of the correct type
 	 *            (T).
+	 * @throws ToolyException
 	 */
-	protected void addAttribute(String aName, AttrType aType, Object aValue) {
-		this.attributes.put(aName, aType);
-		this.attributeValues.put(aName, aValue);
+	protected void addAttribute(String aName, AttrType aType, Object aValue) throws ToolyException {
+		this.attributes.put(aName, new ModelObjectAttribute<>(aName, aValue, aType));
 	}
 
 	/**
@@ -84,12 +97,16 @@ public abstract class AbstractModelObject implements IModelObject {
 	 *            - The (String) value of the attribute.
 	 */
 	protected <T extends Object> void addStringAttribute(String aName, String aValue) {
-		this.attributes.put(aName, AttrType.STRING);
-		this.attributeValues.put(aName, aValue);
+		try {
+			this.attributes.put(aName, new ModelObjectAttribute<>(aName, aValue, String.class));
+		} catch (ToolyException e) {
+			e.printStackTrace();
+		}
+		// this.attributeValues.put(aName, aValue);
 	}
 
-	public Set<Entry<String, AttrType>> getAttrs() {
-		return this.attributes.entrySet();
+	public Set<ModelObjectAttribute<?>> getAttrs() {
+		return new LinkedHashSet<>(this.attributes.values());
 	}
 
 	public Set<String> getAttrNames() {
@@ -108,21 +125,23 @@ public abstract class AbstractModelObject implements IModelObject {
 	}
 
 	public AttrType getAttrType(String attrName) {
-		return this.attributes.get(attrName);
+		ModelObjectAttribute<?> objAttr = this.attributes.get(attrName);
+		return objAttr == null ? null : objAttr.getType();
 	}
 
 	public Object getAttrValue(String attrName) {
-		return this.attributeValues.get(attrName);
+		return this.attributes.get(attrName).getValue();
 	}
 
 	public Object getAttrValueAt(int index) {
 		String attrName = getAttrName(index);
-		return attrName == null ? null : this.attributeValues.get(attrName);
+		return attrName == null ? null : this.getAttrValue(attrName);
 	}
 
 	public void setAttrValue(String attrName, Object attrValue) {
-		if (hasAttr(attrName))
-			this.attributeValues.put(attrName, attrValue);
+		if (hasAttr(attrName)) {
+			this.attributes.get(attrName).setValue(attrValue);
+		}
 	}
 
 	public boolean hasAttr(String attrName) {
@@ -152,7 +171,7 @@ public abstract class AbstractModelObject implements IModelObject {
 	 * @return the name
 	 */
 	public String getName() {
-		return (String) this.attributeValues.get("name");
+		return this.attributes.get("name").getValue().toString();
 	}
 
 	/**
@@ -160,7 +179,10 @@ public abstract class AbstractModelObject implements IModelObject {
 	 *            the name to set
 	 */
 	public void setName(String name) {
-		this.attributeValues.put("name", name);
+		ModelObjectAttribute<? extends Object> nameAttr = this.attributes.get("name");
+		if (nameAttr != null) {
+			nameAttr.setValue(name);
+		}
 	}
 
 	public int compareTo(IModelObject o) {
