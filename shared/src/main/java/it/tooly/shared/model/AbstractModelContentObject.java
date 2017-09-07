@@ -21,7 +21,7 @@ import it.tooly.shared.settings.ModelContentSettings;
  * @author M.E. de Boer
  *
  */
-public class AbstractModelContentObject extends AbstractModelObject implements IModelContentObject {
+public abstract class AbstractModelContentObject extends AbstractModelObject implements IModelContentObject {
 	private long lockedByThread;
 	private String contentType;
 

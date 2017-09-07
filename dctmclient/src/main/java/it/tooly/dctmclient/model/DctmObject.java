@@ -16,7 +16,8 @@ import com.documentum.fc.common.IDfValue;
 import it.tooly.dctmclient.DctmClient;
 import it.tooly.shared.common.ToolyException;
 import it.tooly.shared.model.AbstractModelContentObject;
-import it.tooly.shared.model.ModelObjectAttribute.AttrType;
+import it.tooly.shared.model.attribute.AttrType;
+
 
 public class DctmObject extends AbstractModelContentObject implements IDctmObject {
 	private static final Logger LOGGER = Logger.getLogger(DctmObject.class);
@@ -68,16 +69,16 @@ public class DctmObject extends AbstractModelContentObject implements IDctmObjec
 				addAttribute(attr.getName(), AttrType.BOOLEAN, val.asBoolean());
 				break;
 			case IDfValue.DF_INTEGER:
-				addAttribute(attr.getName(), AttrType.INTEGER, val.asInteger());
+				addAttribute(attr.getName(), AttrType.INTEGRAL, val.asInteger());
 				break;
 			case IDfValue.DF_ID:
-				addAttribute(attr.getName(), AttrType.STRING, val.asId().toString());
+				addAttribute(attr.getName(), AttrType.OBJECTID, val.asId().toString());
 				break;
 			case IDfValue.DF_TIME:
-				addAttribute(attr.getName(), AttrType.DATE, val.asTime().getDate());
+				addAttribute(attr.getName(), AttrType.DATETIME, val.asTime().getDate());
 				break;
 			case IDfValue.DF_DOUBLE:
-				addAttribute(attr.getName(), AttrType.DOUBLE, val.asDouble());
+				addAttribute(attr.getName(), AttrType.FLOATING_POINT, val.asDouble());
 				break;
 			case IDfValue.DF_STRING:
 

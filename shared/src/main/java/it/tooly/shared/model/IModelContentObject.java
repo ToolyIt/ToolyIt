@@ -14,7 +14,7 @@ import it.tooly.shared.common.ToolyException;
  * @author M.E. de Boer
  *
  */
-public interface IModelContentObject extends IModelObject {
+public interface IModelContentObject extends IModelObjectListenable {
 
 	/**
 	 *

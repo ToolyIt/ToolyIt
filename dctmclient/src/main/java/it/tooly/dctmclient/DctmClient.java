@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -38,6 +37,7 @@ import com.documentum.fc.common.IDfLoginInfo;
 import it.tooly.dctmclient.model.ContentServer;
 import it.tooly.dctmclient.model.Docbroker;
 import it.tooly.dctmclient.model.IContentServer;
+import it.tooly.dctmclient.model.IDocbroker;
 import it.tooly.dctmclient.model.IRepository;
 import it.tooly.dctmclient.model.IUserAccount;
 import it.tooly.dctmclient.model.Repository;
@@ -64,9 +64,9 @@ public class DctmClient {
 	private Map<String, ContentServer> hostsContentServers;
 
 	/**
-	 * Known content servers per repository with the repository as key
+	 * Known docbrokers
 	 */
-	private Map<IRepository, List<ContentServer>> reposContentServers;
+	private ModelMap<Docbroker> docbrokerMap;
 
 	/**
 	 * Known repositories with the repository id as key
@@ -74,7 +74,7 @@ public class DctmClient {
 	private ModelMap<Repository> repoMap;
 
 	/**
-	 * Known content servers with the (short) name as key
+	 * Known content servers with the content server name as key
 	 */
 	private ModelMap<ContentServer> contentServerMap;
 
@@ -96,7 +96,7 @@ public class DctmClient {
 	private void init() {
 		this.clientx = new DfClientX();
 		this.hostsContentServers = new HashMap<>();
-		this.reposContentServers = new HashMap<>();
+		this.docbrokerMap = new ModelMap<>();
 		this.repoMap = new ModelMap<>();
 		this.contentServerMap = new ModelMap<>();
 		this.serverSessMans = new HashMap<>();
@@ -154,11 +154,17 @@ public class DctmClient {
 		return server;
 	}
 
+	/**
+	 * Get a map of docbrokers known to this Documentum client
+	 *
+	 * @return A {@link ModelMap<Docbroker>} of docbrokers
+	 * @throws DfException
+	 */
 	public ModelMap<Docbroker> getDocbrokerMap() throws DfException {
 		initDFC();
+		logger.debug("Getting docbroker map");
 		ModelMap<Docbroker> docbrokerMap = new ModelMap<>();
 		DocbrokerMap dfDocbrokerMap = (DocbrokerMap) this.docbrokerClient.getDocbrokerMap();
-		logger.debug("DOCBROKERS");
 		for (int x = 0; x < dfDocbrokerMap.getDocbrokerCount(); x++) {
 			String attrName = dfDocbrokerMap.getAttr(x).getName();
 			String attrVals = dfDocbrokerMap.getAllRepeatingStrings(attrName, ",");
@@ -171,100 +177,218 @@ public class DctmClient {
 		return docbrokerMap;
 	}
 
-	public ModelMap<Repository> getRepositoryMap() {
-		return this.repoMap;
+	/**
+	 * Get a map of docbrokers on a specific host (known to this Documentum
+	 * client)
+	 *
+	 * @param hostname
+	 *            The hostname of the server
+	 * @return A {@link ModelMap<Docbroker>} of docbrokers
+	 * @throws DfException
+	 */
+	public ModelMap<Docbroker> getDocbrokerMap(String hostname) throws DfException {
+		initDFC();
+		logger.debug("Getting docbroker map for server " + hostname);
+		ModelMap<Docbroker> docbrokerMap = new ModelMap<>();
+		DocbrokerMap dfDocbrokerMap = (DocbrokerMap) this.docbrokerClient.getDocbrokerMap();
+		for (int x = 0; x < dfDocbrokerMap.getDocbrokerCount(); x++) {
+			String docbrokerHostname = dfDocbrokerMap.getHostName(x);
+			if (docbrokerHostname == null || !docbrokerHostname.equalsIgnoreCase(hostname)) {
+				// Continue if this docbroker is not on the requested host
+				continue;
+			}
+			String attrName = dfDocbrokerMap.getAttr(x).getName();
+			String attrVals = dfDocbrokerMap.getAllRepeatingStrings(attrName, ",");
+			logger.debug("  [" + x + "] " + attrName + ": " + attrVals);
+			ContentServer server = getCreateContentServerByHostname(hostname, null);
+			Docbroker docbroker = createOrUpdateDocbroker(server, dfDocbrokerMap, x);
+			docbrokerMap.put(docbroker);
+		}
+		return docbrokerMap;
+	}
+
+	private Docbroker createOrUpdateDocbroker(ContentServer contentServer, DocbrokerMap docbrokerMap, int index)
+			throws DfException {
+		String hostname = docbrokerMap.getHostName(index);
+		if (this.hostsContentServers == null || this.hostsContentServers.isEmpty()) {
+			this.getContentServerMap();
+		}
+		if (contentServer == null)
+			contentServer = getCreateContentServerByHostname(hostname, null);
+		if (contentServer == null)
+			return null;
+		int portNr = docbrokerMap.getPortNumber(index);
+		String docbrokerId = Docbroker.getId(contentServer, portNr);
+		Docbroker docbroker = this.docbrokerMap.get(docbrokerId);
+		if (docbroker == null) {
+			docbroker = new Docbroker(contentServer, docbrokerMap, index);
+			this.docbrokerMap.put(docbroker);
+		} else {
+			docbroker.setServer(contentServer);
+			docbroker.setPort(portNr);
+			docbroker.setName(Docbroker.getName(contentServer, portNr));
+			docbroker.setSecureConnectMode(docbrokerMap.getSecureConnectMode(index));
+		}
+		return docbroker;
 	}
 
 	/**
-	 * Load the repositories from the DFC configuration. This will also update
-	 * the content server map.
+	 * Get a map of all known repositories
 	 *
 	 * @return A {@link ModelMap} of repositories.
 	 * @throws DfException
 	 */
-	public ModelMap<Repository> loadRepositoryMap() throws DfException {
-		logger.debug("Loading repository map");
+	public ModelMap<Repository> getRepositoryMap() throws DfException {
+		logger.debug("Getting repository map");
 		initDFC();
 		IDfDocbaseMap dbm = this.docbrokerClient.getDocbaseMap();
-		for (int rx = 0; rx < dbm.getDocbaseCount(); rx++) {
-			logger.debug(" - " + dbm.getDocbaseName(rx) + " (" + dbm.getDocbaseDescription(rx) + ")");
-			Repository repo;
-			repo = new Repository(dbm.getDocbaseId(rx), dbm.getDocbaseName(rx),
-					dbm.getDocbaseDescription(rx));
-			this.repoMap.put(repo);
-		}
+		ModelMap<Repository> repoMap = getRepositoryMapFromDocbaseMap(dbm);
 		logger.debug("Found " + this.repoMap.size() + " repositories");
-		return this.repoMap;
+		return repoMap;
 	}
 
 	/**
-	 * @return A list of known content servers (values from the content server map)
+	 * Get a map of repositories known to a specific docbroker
+	 *
+	 * @return A {@link ModelMap} of repositories.
+	 * @throws DfException
 	 */
-	public Collection<ContentServer> getContentServers() {
+	public ModelMap<Repository> getRepositoryMap(IDocbroker docbroker) throws DfException {
+		logger.debug("Getting repository map for docbroker " + docbroker.getName());
+		initDFC();
+		IDfDocbaseMap dbm = this.docbrokerClient.getDocbaseMapFromSpecificDocbroker(null,
+				docbroker.getServer().getHostname(), Integer.toString(docbroker.getPort()));
+		ModelMap<Repository> repoMap = getRepositoryMapFromDocbaseMap(dbm);
+		logger.debug("Found " + this.repoMap.size() + " repositories");
+		return repoMap;
+	}
+
+	public ModelMap<Repository> getRepositoryMapFromDocbaseMap(IDfDocbaseMap docbaseMap) throws DfException {
+		ModelMap<Repository> repoMap = new ModelMap<>();
+		for (int rx = 0; rx < docbaseMap.getDocbaseCount(); rx++) {
+			logger.debug(" - " + docbaseMap.getDocbaseName(rx) + " (" + docbaseMap.getDocbaseDescription(rx) + ")");
+			Repository repo = createOrUpdateRepository(docbaseMap, rx);
+			repoMap.put(repo);
+		}
+		return repoMap;
+	}
+
+	private Repository createOrUpdateRepository(IDfDocbaseMap docbaseMap, int index) throws DfException {
+		Repository repo = this.repoMap.get(docbaseMap.getDocbaseId(index));
+		if (repo == null) {
+			repo = new Repository(docbaseMap.getDocbaseId(index), docbaseMap.getDocbaseName(index),
+					docbaseMap.getDocbaseDescription(index));
+			this.repoMap.put(repo);
+		} else {
+			repo.setName(docbaseMap.getDocbaseName(index));
+			repo.setDescription(docbaseMap.getDocbaseDescription(index));
+		}
+		return repo;
+	}
+
+	/**
+	 * @return A list of known, cached, content servers (values from the content
+	 *         server map)
+	 * @throws DfException
+	 */
+	public Collection<ContentServer> getContentServers() throws DfException {
 		return this.contentServerMap.values();
 	}
 
 	/**
-	 * @return The map of known (cached) content servers
-	 */
-	public ModelMap<ContentServer> getContentServerMap() {
-		return this.contentServerMap;
-	}
-
-	/**
-	 * Get all content servers for the known repositories. This won't return
-	 * anything if there are no known repositories.
-	 *
-	 * @return A {@link Collection} of {@link ContentServer} objects.
+	 * @return The map of all content servers known to the Documentum client
 	 * @throws DfException
-	 * @throws ExecutionException
-	 * @throws InterruptedException
 	 */
-	public ModelMap<ContentServer> loadAllContentServers()
-			throws DfException, InterruptedException, ExecutionException {
+	public ModelMap<ContentServer> getContentServerMap() throws DfException {
 		initDFC();
-		Collection<Repository> repoList = getRepositoryMap().values();
-		for (Repository repo : repoList) {
-			ModelMap<ContentServer> csMap = loadContentServerMap(repo);
-			this.contentServerMap.putAll(csMap);
+		logger.debug("Getting content server map");
+		ModelMap<ContentServer> contentServerMap = new ModelMap<>();
+		IDfDocbaseMap docbaseMap = this.docbrokerClient.getDocbaseMap();
+		for (int x = 0; x < docbaseMap.getDocbaseCount(); x++) {
+			IDfServerMap dfServerMap = (IDfServerMap) docbaseMap.getServerMap(x);
+			Repository repository = createOrUpdateRepository(docbaseMap, x);
+			ModelMap<ContentServer> repoContentServerMap = getContentServerMapFromServerMap(repository, dfServerMap);
+			contentServerMap.putAll(repoContentServerMap);
 		}
-		return this.contentServerMap;
+		return contentServerMap;
 	}
 
 	/**
-	 * Load content servers for a specific repository, cache and return them.
-	 * The stored map of all content servers will be cleared first.
+	 * Get content servers for a specific repository
 	 *
 	 * @param repository
 	 *            - An {@link IRepository}
 	 * @return A {@link ModelMap} with {@link ContentServer} as values
 	 */
-	public ModelMap<ContentServer> loadContentServerMap(IRepository repository) throws DfException {
+	public ModelMap<ContentServer> getContentServerMap(IRepository repository) throws DfException {
 		initDFC();
+		logger.debug("Getting content server map for repository " + repository.getName());
 		IDfServerMap dfServerMap = (IDfServerMap) this.docbrokerClient.getServerMap(repository.getName());
-		if (this.contentServerMap != null) {
-			// Clear servers from known serverlist first
-			for (Entry<String, ContentServer> csEntry : this.contentServerMap.entrySet()) {
-				this.hostsContentServers.remove(csEntry.getValue().getHostname());
-			}
-		}
-		this.contentServerMap = new ModelMap<>();
-		logger.debug("DCTMCLIENT - CONTENT SERVERS FOR REPOSITORY " + repository.getName());
+		ModelMap<ContentServer> serverMap = new ModelMap<>();
 		List<ContentServer> servers = new ArrayList<>();
 		for (int sx = 0; sx < dfServerMap.getServerCount(); sx++) {
 			ContentServer server;
 			server = new ContentServer(repository, dfServerMap, sx);
 			logger.debug(" - " + server);
 			servers.add(server);
-			this.contentServerMap.put(server);
 			this.hostsContentServers.put(server.getHostname(), server);
 		}
-		this.reposContentServers.put(repository, servers);
-		return this.contentServerMap;
+		return serverMap;
 	}
 
 	/**
-	 * Create a Documentum login-info object using plain username/password strings
+	 * Get content servers for a specific repository
+	 *
+	 * @param repositoryName
+	 *            - Name of the repository
+	 * @return A {@link ModelMap} with {@link ContentServer} as values
+	 */
+	public ModelMap<ContentServer> getContentServerMap(String repositoryName) throws DfException {
+		initDFC();
+		logger.debug("Getting content server map for repository " + repositoryName);
+		IDfServerMap dfServerMap = (IDfServerMap) this.docbrokerClient.getServerMap(repositoryName);
+		ModelMap<Repository> repoMap = getRepositoryMap();
+		Repository repository = repoMap.get(repositoryName);
+		if (repository == null) {
+			logger.warn("Unknown repository " + repositoryName);
+			return null;
+		}
+		ModelMap<ContentServer> serverMap = new ModelMap<>();
+		for (int sx = 0; sx < dfServerMap.getServerCount(); sx++) {
+			ContentServer server = createOrUpdateContentServer(repository, dfServerMap, sx);
+			serverMap.put(server);
+		}
+		return serverMap;
+	}
+
+	public ModelMap<ContentServer> getContentServerMapFromServerMap(IRepository repository, IDfServerMap dfServerMap)
+			throws DfException {
+		ModelMap<ContentServer> serverMap = new ModelMap<>();
+		for (int sx = 0; sx < dfServerMap.getServerCount(); sx++) {
+			ContentServer server = createOrUpdateContentServer(repository, dfServerMap, sx);
+			serverMap.put(server);
+		}
+		return serverMap;
+	}
+
+	private ContentServer createOrUpdateContentServer(IRepository repository, IDfServerMap dfServerMap, int index)
+			throws DfException {
+		ContentServer server = this.contentServerMap.get(dfServerMap.getServerName(index));
+		if (server == null) {
+			server = new ContentServer(repository, dfServerMap, index);
+			this.contentServerMap.put(server);
+		} else {
+			server.update(dfServerMap.getHostName(index), dfServerMap.getClientProximity(index),
+					dfServerMap.getLastStatus(index));
+		}
+		this.hostsContentServers.put(server.getHostname(), server);
+		return server;
+	}
+
+	/**
+	 * Create a Documentum login-info object using plain username/password
+	 * strings
+	 *
 	 * @param username
 	 * @param password
 	 * @param domain
@@ -372,13 +496,7 @@ public class DctmClient {
 	 * @throws DfServiceException
 	 */
 	public synchronized IDfSession getSession(IRepository repository, IUserAccount account) throws DfException {
-		List<ContentServer> servers;
-		if (this.reposContentServers == null || this.reposContentServers.isEmpty()) {
-			ModelMap<ContentServer> serverMap = loadContentServerMap(repository);
-			servers = new ArrayList<>(serverMap.values());
-		} else {
-			servers = this.reposContentServers.get(repository);
-		}
+		ModelMap<ContentServer> servers = getContentServerMap(repository);
 		if (servers == null || servers.isEmpty())
 			return null;
 		IDfSessionManager sesMan = getSessionManager(servers.get(0), account);
@@ -397,14 +515,15 @@ public class DctmClient {
 	 * @param alsoDisconnect
 	 *            {@code true} to also do a session disconnect
 	 * @return The number sessions that have been released
+	 * @throws DfException
 	 */
-	public synchronized int releaseSessions(IRepository repository, boolean alsoDisconnect) {
-		List<ContentServer> servers = this.reposContentServers.get(repository.getName());
+	public synchronized int releaseSessions(IRepository repository, boolean alsoDisconnect) throws DfException {
+		ModelMap<ContentServer> servers = getContentServerMap(repository);
 		Set<IContentServer> disconnectedServers = new HashSet<>();
 
 		int nrReleasedSessions = 0;
 		try {
-			for (ContentServer server : servers) {
+			for (ContentServer server : servers.values()) {
 				IDfSession session = this.serverSessions.get(server);
 				if (session == null) {
 					logger.info("No session for server " + server);

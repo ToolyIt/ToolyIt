@@ -1,112 +1,121 @@
-/*******************************************************************************
- * Copyright (c) 2005, 2015 IBM Corporation and others.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
- *
- * Contributors:
- *     IBM Corporation - initial API and implementation
- *******************************************************************************/
 package it.tooly.shared.model;
 
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
+import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import it.tooly.shared.common.ToolyException;
-import it.tooly.shared.model.ModelObjectAttribute.AttrType;
+import it.tooly.shared.model.attribute.AttrType;
+import it.tooly.shared.model.attribute.IModelObjectAttribute;
+import it.tooly.shared.model.attribute.ModelObjectAttribute;
 
 /**
  * An object with an id and a name. Subclasses can safely implement
  * {@link IModelObject}
  */
-public abstract class AbstractModelObject implements IModelObject {
+public abstract class AbstractModelObject implements IModelObjectListenable {
 	protected String id;
-	protected Map<String, ModelObjectAttribute<? extends Object>> attributes;
-	// protected Map<String, Object> attributeValues;
+	protected Map<String, IModelObjectAttribute<?>> attributes;
+	protected Map<IModelObjectAttribute<?>, Object> attributeValues;
+	private final PropertyChangeSupport propertyChangeSupport;
 
 	public AbstractModelObject(String id) {
-		this.init(id, "");
+		this(id, "Object[" + id + "]", null);
 	}
 
 	public AbstractModelObject(String id, String name) {
-		this.init(id, name);
+		this(id, name, null);
 	}
 
-	public AbstractModelObject(String id, String name, List<String> strAttrs) {
-		this.init(id, name);
-		if (strAttrs != null && strAttrs.size() > 0) {
-			for (String attrName : strAttrs) {
-				addStringAttribute(attrName, "");
-			}
-		}
-	}
-
-	private void init(String id, String name) {
+	/**
+	 * @param id
+	 * @param name
+	 * @param strAttrs
+	 */
+	public AbstractModelObject(String id, String name, Set<String> strAttrs) {
 		this.id = id;
 		/*
 		 * Create attributes and attributeValues maps. They are both
 		 * LinkedHashMap because they should be in the same order.
 		 */
 		this.attributes = new LinkedHashMap<>();
-		// this.attributeValues = new LinkedHashMap<>();
+		this.attributeValues = new LinkedHashMap<>();
+
 		/*
 		 * By default this object has a name attribute
 		 */
 		addStringAttribute("name", name);
+
+		if (strAttrs != null && strAttrs.size() > 0) {
+			for (String attrName : strAttrs) {
+				addStringAttribute(attrName, "");
+			}
+		}
+
+		/*
+		 * Create property change support so this object can be used as the
+		 * source for events
+		 */
+		propertyChangeSupport = new PropertyChangeSupport(this);
 	}
 
 	/**
 	 * Add a certain type of attribute (with some matching type of value) to
 	 * this object.
 	 *
+	 * @param <T>
+	 *
 	 * @param attribute
 	 *            - A ModelObjectAttribute
+	 * @param aValue
+	 *            - The attribute value (may be null)
 	 */
-	protected void addAttribute(ModelObjectAttribute<?> attribute) {
+	protected <T> void addAttribute(IModelObjectAttribute<T> attribute, T aValue) {
 		this.attributes.put(attribute.getName(), attribute);
+		this.attributeValues.put(attribute, aValue);
 	}
 
 	/**
 	 * Add a certain type of attribute (with some matching type of value) to
 	 * this object.
+	 *
+	 * @param <T>
 	 *
 	 * @param aName
 	 *            - Name of the attribute.
 	 * @param aType
 	 *            - The type of the attribute.
 	 * @param aValue
-	 *            - The value of the attribute. Should be of the correct type
-	 *            (T).
+	 *            - The value of the attribute (may be null).
 	 * @throws ToolyException
 	 */
-	protected void addAttribute(String aName, AttrType aType, Object aValue) throws ToolyException {
-		this.attributes.put(aName, new ModelObjectAttribute<>(aName, aValue, aType));
+	protected <T> void addAttribute(String aName, AttrType aType, T aValue) {
+		IModelObjectAttribute<T> attribute = new ModelObjectAttribute<>(aName, aType);
+		addAttribute(attribute, aValue);
 	}
 
 	/**
 	 * Add a certain type of attribute (with some matching type of value) to
 	 * this object.
 	 *
+	 * @param <T>
+	 *
 	 * @param aName
 	 *            - Name of the attribute.
 	 * @param aValue
 	 *            - The (String) value of the attribute.
+	 * @throws ToolyException
 	 */
-	protected <T extends Object> void addStringAttribute(String aName, String aValue) {
-		try {
-			this.attributes.put(aName, new ModelObjectAttribute<>(aName, aValue, String.class));
-		} catch (ToolyException e) {
-			e.printStackTrace();
-		}
-		// this.attributeValues.put(aName, aValue);
+	protected void addStringAttribute(String aName, String aValue) {
+		IModelObjectAttribute<String> attribute = new ModelObjectAttribute<>(aName, AttrType.STRING);
+		addAttribute(attribute, aValue);
 	}
 
-	public Set<ModelObjectAttribute<?>> getAttrs() {
-		return new LinkedHashSet<>(this.attributes.values());
+	public Collection<IModelObjectAttribute<?>> getAttrs() {
+		return this.attributes.values();
 	}
 
 	public Set<String> getAttrNames() {
@@ -124,13 +133,26 @@ public abstract class AbstractModelObject implements IModelObject {
 		}
 	}
 
+	public IModelObjectAttribute<?> getAttr(String attrName) {
+		return this.attributes.get(attrName);
+	}
+
 	public AttrType getAttrType(String attrName) {
-		ModelObjectAttribute<?> objAttr = this.attributes.get(attrName);
+		IModelObjectAttribute<?> objAttr = this.attributes.get(attrName);
 		return objAttr == null ? null : objAttr.getType();
 	}
 
-	public Object getAttrValue(String attrName) {
-		return this.attributes.get(attrName).getValue();
+	@SuppressWarnings("unchecked")
+	public <T> T getAttrValue(IModelObjectAttribute<T> attribute) {
+		Object attrValue = this.attributeValues.get(attribute);
+		return (T) attrValue;
+	}
+
+	public Object getAttrValue(String attributeName) {
+		IModelObjectAttribute<?> attribute = getAttr(attributeName);
+		if (attribute == null)
+			return null;
+		return getAttrValue(attribute);
 	}
 
 	public Object getAttrValueAt(int index) {
@@ -138,21 +160,41 @@ public abstract class AbstractModelObject implements IModelObject {
 		return attrName == null ? null : this.getAttrValue(attrName);
 	}
 
-	public void setAttrValue(String attrName, Object attrValue) {
-		if (hasAttr(attrName)) {
-			this.attributes.get(attrName).setValue(attrValue);
+	public String getAttrValueAsString(IModelObjectAttribute<?> attribute) {
+		Object attrValue = this.attributeValues.get(attribute);
+		return getAttrValueAsString(attribute.getType(), attrValue);
+	}
+
+	public static String getAttrValueAsString(AttrType attrType, Object attrValue) {
+		String textFormat = attrType.getTextFormat();
+		return String.format(textFormat, attrValue);
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T> boolean setAttrValue(String attributeName, T attrValue) {
+		if (!hasAttr(attributeName))
+			return false;
+		IModelObjectAttribute<?> attribute = getAttr(attributeName);
+		if (attribute.getValueClass().isAssignableFrom(attrValue.getClass())) {
+			return this.setAttrValue((IModelObjectAttribute<T>) attribute, attrValue);
+		} else {
+			return false;
+		}
+	}
+
+	public <T> boolean setAttrValue(IModelObjectAttribute<T> attribute, T attrValue) {
+		AttrType aType = attribute.getType();
+		if (aType.getValueClass().isAssignableFrom(attrValue.getClass())) {
+			Object oldValue = this.attributeValues.put(attribute, attrValue);
+			this.propertyChangeSupport.firePropertyChange(attribute.getName(), oldValue, attrValue);
+			return true;
+		} else {
+			return false;
 		}
 	}
 
 	public boolean hasAttr(String attrName) {
 		return this.attributes.containsKey(attrName);
-	}
-
-	/**
-	 * @return {@code false}, as this is not an observable object
-	 */
-	public boolean isObservable() {
-		return false;
 	}
 
 	public String getId() {
@@ -171,7 +213,8 @@ public abstract class AbstractModelObject implements IModelObject {
 	 * @return the name
 	 */
 	public String getName() {
-		return this.attributes.get("name").getValue().toString();
+		IModelObjectAttribute<?> attribute = getAttr("name");
+		return attribute == null ? null : this.getAttrValueAsString(attribute);
 	}
 
 	/**
@@ -179,10 +222,23 @@ public abstract class AbstractModelObject implements IModelObject {
 	 *            the name to set
 	 */
 	public void setName(String name) {
-		ModelObjectAttribute<? extends Object> nameAttr = this.attributes.get("name");
-		if (nameAttr != null) {
-			nameAttr.setValue(name);
-		}
+		setAttrValue("name", name);
+	}
+
+	public void addPropertyChangeListener(PropertyChangeListener listener) {
+		this.propertyChangeSupport.addPropertyChangeListener(listener);
+	}
+
+	public void addPropertyChangeListener(IModelObjectAttribute<?> attribute, PropertyChangeListener listener) {
+		this.propertyChangeSupport.addPropertyChangeListener(attribute.getName(), listener);
+	}
+
+	public void removePropertyChangeListener(PropertyChangeListener listener) {
+		this.propertyChangeSupport.removePropertyChangeListener(listener);
+	}
+
+	public void removePropertyChangeListener(IModelObjectAttribute<?> attribute, PropertyChangeListener listener) {
+		this.propertyChangeSupport.removePropertyChangeListener(attribute.getName(), listener);
 	}
 
 	public int compareTo(IModelObject o) {
@@ -194,7 +250,7 @@ public abstract class AbstractModelObject implements IModelObject {
 	 */
 	@Override
 	public String toString() {
-		return this.getName() + " (" + id + ")";
+		return this.getName();
 	}
 
 }

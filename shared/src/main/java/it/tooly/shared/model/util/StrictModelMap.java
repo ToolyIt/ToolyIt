@@ -3,11 +3,11 @@
  */
 package it.tooly.shared.model.util;
 
+import java.util.Collection;
 import java.util.Iterator;
-import java.util.Set;
 
 import it.tooly.shared.model.IModelObject;
-import it.tooly.shared.model.ModelObjectAttribute;
+import it.tooly.shared.model.attribute.IModelObjectAttribute;
 
 /**
  * Extends the {@link ModelMap} but is strict in which objects are allowed to
@@ -24,10 +24,19 @@ public class StrictModelMap<T extends IModelObject> extends ModelMap<T> implemen
 
 	private static final long serialVersionUID = 8891592978180703001L;
 	private int attrsHash = -1;
+	private Class<T> objectType;
+
+	public StrictModelMap(Class<T> objectType) {
+		super();
+		this.objectType = objectType;
+	}
 
 	public T put(T object) {
 		if (this.attrsHash != -1 && !attributesHashMatches(object)) {
 			throw new IllegalArgumentException("Object attributes hash doesn't match");
+		}
+		if (this.attrsHash == -1) {
+			this.attrsHash = object.getAttrNames().hashCode();
 		}
 		return super.put(object);
 	}
@@ -36,7 +45,7 @@ public class StrictModelMap<T extends IModelObject> extends ModelMap<T> implemen
 		return (object.getAttrNames().hashCode() == this.attrsHash);
 	}
 
-	public Set<ModelObjectAttribute<?>> getFirstObjectAttrs() {
+	public Collection<IModelObjectAttribute<?>> getFirstObjectAttrs() {
 		if (!this.isEmpty()) {
 			Iterator<String> keysIt = this.keySet().iterator();
 			T object = this.get(keysIt.next());
@@ -44,6 +53,11 @@ public class StrictModelMap<T extends IModelObject> extends ModelMap<T> implemen
 		} else {
 			return null;
 		}
+	}
+
+	@Override
+	public Class<T> getObjectType() {
+		return this.objectType;
 	}
 
 }

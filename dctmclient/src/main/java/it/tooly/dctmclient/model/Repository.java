@@ -6,6 +6,7 @@ import it.tooly.shared.model.AbstractModelObject;
 import it.tooly.shared.model.IModelObject;
 
 public class Repository extends AbstractModelObject implements IModelObject, IRepository {
+	public static final String ATTR_DESCRIPTION = "description";
 
 	/**
 	 * Repository constructor. This also loads the content server map for this
@@ -21,14 +22,14 @@ public class Repository extends AbstractModelObject implements IModelObject, IRe
 	 */
 	public Repository(String id, String name, String description) throws DfException {
 		super(id, name);
-		addStringAttribute("description", description);
+		addStringAttribute(ATTR_DESCRIPTION, description);
 	}
 
 	public String getDescription() {
-		return (String) getAttrValue("description");
+		return (String) getAttrValue(ATTR_DESCRIPTION);
 	}
 
 	public void setDescription(String description) {
-		setAttrValue("description", description);
+		setAttrValue(ATTR_DESCRIPTION, description);
 	}
 }

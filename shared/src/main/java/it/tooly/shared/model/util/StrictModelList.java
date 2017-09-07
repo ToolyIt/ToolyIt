@@ -4,10 +4,10 @@
 package it.tooly.shared.model.util;
 
 import java.util.ArrayList;
-import java.util.Set;
+import java.util.Collection;
 
 import it.tooly.shared.model.IModelObject;
-import it.tooly.shared.model.ModelObjectAttribute;
+import it.tooly.shared.model.attribute.IModelObjectAttribute;
 
 /**
  * Extends the {@link ArrayList} but is strict in which objects are allowed to
@@ -24,11 +24,20 @@ public class StrictModelList<T extends IModelObject> extends ArrayList<T>
 		implements IModelList<T>, IStrictModelList<T> {
 
 	private static final long serialVersionUID = -8053195669557158204L;
+	private final Class<T> objectType;
 	private int attrsHash = -1;
+
+	public StrictModelList(Class<T> objectType) {
+		super();
+		this.objectType = objectType;
+	}
 
 	public boolean add(T object) {
 		if (this.attrsHash != -1 && !attributesHashMatches(object)) {
 			throw new IllegalArgumentException("Object attributes hash doesn't match");
+		}
+		if (this.attrsHash == -1) {
+			this.attrsHash = object.getAttrNames().hashCode();
 		}
 		return super.add(object);
 	}
@@ -37,12 +46,17 @@ public class StrictModelList<T extends IModelObject> extends ArrayList<T>
 		return (object.getAttrNames().hashCode() == this.attrsHash);
 	}
 
-	public Set<ModelObjectAttribute<?>> getFirstObjectAttrs() {
+	public Class<T> getObjectType() {
+		return this.objectType;
+	}
+
+	public Collection<IModelObjectAttribute<?>> getFirstObjectAttrs() {
 		if (!this.isEmpty()) {
 			return this.get(0).getAttrs();
 		} else {
 			return null;
 		}
 	}
+
 
 }

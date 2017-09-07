@@ -38,29 +38,26 @@ public class ContentServer extends DctmObject implements IContentServer, IReposi
 	private SessionsCount sessionsCount = null;
 
 	public ContentServer(IRepository repository, IDfServerMap dfServerMap, int index) throws DfException {
-		super(repository, dfServerMap.getServerName(index), dfServerMap.getServerName(index));
-		this.hostname = dfServerMap.getHostName(index);
-		this.connectionString = null;
-		this.proximity = dfServerMap.getClientProximity(index);
-		this.lastStatus = dfServerMap.getLastStatus(index);
-		this.connectionState = ConnectionState.DISCONNECTED;
-		this.typedObject = dfServerMap;
-		this.maxSessionCount = -1;
-		this.serverConfigId = DfId.DF_NULLID;
-		setConnectionString();
+		this(repository, dfServerMap.getServerName(index), dfServerMap.getHostName(index),
+				dfServerMap.getClientProximity(index), dfServerMap.getLastStatus(index));
 	}
 
 	public ContentServer(IRepository repository, String name, String hostname, int proximity, String lastStatus) {
 		super(repository, name, name);
 
-		this.hostname = hostname;
-		this.connectionString = null;
-		this.proximity = proximity;
-		this.lastStatus = lastStatus;
+		update(hostname, proximity, lastStatus);
 		this.connectionState = ConnectionState.DISCONNECTED;
 		this.typedObject = null;
 		this.maxSessionCount = -1;
 		this.serverConfigId = DfId.DF_NULLID;
+
+		setConnectionString();
+	}
+
+	public void update(String hostname, int proximity, String lastStatus) {
+		this.hostname = hostname;
+		this.proximity = proximity;
+		this.lastStatus = lastStatus;
 		setConnectionString();
 	}
 

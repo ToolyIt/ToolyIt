@@ -3,7 +3,9 @@
  */
 package it.tooly.dctmclient.model;
 
-import it.tooly.shared.model.util.ModelMap;
+import com.documentum.fc.client.impl.docbroker.DocbrokerMap;
+
+import it.tooly.shared.model.AbstractModelObject;
 
 /**
  * A Documentum docbroker
@@ -11,24 +13,29 @@ import it.tooly.shared.model.util.ModelMap;
  * @author M.E. de Boer
  *
  */
-public class Docbroker extends DctmObject implements IDocbroker {
+public class Docbroker extends AbstractModelObject implements IDocbroker {
 
 	private IContentServer server;
 	private int port;
 	private int secureConnectMode;
-	private ModelMap<IRepository> repoMap;
 
 	public Docbroker(IContentServer server, int port, int secureConnectMode) {
-		super(server.getRepository(), server.getId() + port, server.getId() + port);
+		super(getId(server, port), getName(server, port));
 		this.server = server;
+		this.port = port;
+		this.secureConnectMode = secureConnectMode;
     }
 
-	public int getRepositoryCount() {
-		return repoMap.size();
+	public Docbroker(IContentServer server, DocbrokerMap docbrokerMap, int index) {
+		this(server, docbrokerMap.getPortNumber(index), docbrokerMap.getSecureConnectMode(index));
 	}
 
-	public ModelMap<IRepository> getRepositoryMap() {
-		return this.repoMap;
+	public static String getId(IContentServer server, int port) {
+		return server.getId() + ":" + port;
+	}
+
+	public static String getName(IContentServer server, int port) {
+		return server.getName() + ":" + port;
 	}
 
 	public IContentServer getServer() {
