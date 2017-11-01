@@ -110,7 +110,7 @@ public abstract class AbstractModelObject implements IModelObjectListenable {
 	 * @throws ToolyException
 	 */
 	protected void addStringAttribute(String aName, String aValue) {
-		IModelObjectAttribute<String> attribute = new ModelObjectAttribute<>(aName, AttrType.STRING);
+		IModelObjectAttribute<String> attribute = ModelObjectAttribute.createStringAttr(aName);
 		addAttribute(attribute, aValue);
 	}
 

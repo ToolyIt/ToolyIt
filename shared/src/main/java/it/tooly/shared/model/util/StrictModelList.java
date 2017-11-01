@@ -27,6 +27,11 @@ public class StrictModelList<T extends IModelObject> extends ArrayList<T>
 	private final Class<T> objectType;
 	private int attrsHash = -1;
 
+	public StrictModelList() {
+		super();
+		this.objectType = null;
+	}
+
 	public StrictModelList(Class<T> objectType) {
 		super();
 		this.objectType = objectType;
